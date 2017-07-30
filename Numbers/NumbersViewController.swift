@@ -11,12 +11,12 @@ import UIKit
 
 class NumbersViewController: UITableViewController, ModelDelegate {
 
-	private var model: Model!
+	private var model: Model?
 
 	override func viewWillAppear(_ animated: Bool) {
 		super.viewWillAppear(animated)
 		
-		self.model = Model(delegate: self)
+		self.model = Model(useCache: false, delegate: self)
 	}
 	
 	// MARK: - UITableViewDataSource
@@ -26,13 +26,28 @@ class NumbersViewController: UITableViewController, ModelDelegate {
 	}
 
 	override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-		return self.model.objects.count
+		if self.model != nil {
+			return self.model!.objects.count
+		} else {
+			return 0
+		}
 	}
 
 	override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+		let object = self.model!.objects[indexPath.row]
+		
 		let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath)
 
-		cell.textLabel!.text = self.model.objects[indexPath.row].name
+		cell.textLabel!.text = object.name
+
+		object.image { (image, error) in
+			if error != nil || image == nil {
+				// TODO: display alert?
+				return
+			}
+			
+			cell.imageView!.image = image!
+		}
 		
 		return cell
 	}
