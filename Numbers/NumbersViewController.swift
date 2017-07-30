@@ -33,9 +33,10 @@ class NumbersViewController: UITableViewController, ModelDelegate {
 		model = nil
 		tableView.reloadData()
 		
+		// Without this, runtime will cache results of network calls.
 		URLSession.shared.reset {
 			DispatchQueue.main.async {
-				self.model = Model(useCache: false, delegate: self)
+				self.model = Model(delegate: self)
 				self.tableView.reloadData()
 			}
 		}

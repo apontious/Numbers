@@ -13,15 +13,11 @@ class ModelObject: CustomStringConvertible {
 	let name: String
 	let url: URL
 	let index: Int
-	let useCache: Bool
 	
-	private var image: UIImage?
-	
-	init(name: String, url: URL, index: Int, useCache: Bool) {
+	init(name: String, url: URL, index: Int) {
 		self.name = name
 		self.url = url
 		self.index = index
-		self.useCache = useCache
 	}
 	
 	// MARK: CustomStringConvertible
@@ -31,16 +27,11 @@ class ModelObject: CustomStringConvertible {
 	}
 	func image(_ handler: @escaping (UIImage?, Error?) -> Void) {
 		assert(Thread.isMainThread)
-		
-		// Image already loaded, can invoke callback synchronously (but don't count on it!).
-		if (useCache && image != nil) {
-			handler(image, nil)
-			return
-		}
 
 		let savedDescription = self.description
 		
-		URLSession.shared.dataTask(with: url, completionHandler: { [weak self] (imageData, response, error) in
+		// Always use network API to load image.
+		URLSession.shared.dataTask(with: url, completionHandler: { (imageData, response, error) in
 			// Callback will be on background thread. Do work here, but only modify self and invoke callbacks on main thread.
 			
 			do {
@@ -55,7 +46,6 @@ class ModelObject: CustomStringConvertible {
 				}
 				
 				DispatchQueue.main.sync {
-					self?.image = image // Modify properties only on main thread for safety
 					handler(image, nil)
 				}
 			} catch {
@@ -92,12 +82,10 @@ class Model {
 	
 	private(set) var objects: [ModelObject] = []
 
-	init(useCache: Bool, delegate: ModelDelegate) {
+	init(delegate: ModelDelegate) {
 		assert(Thread.isMainThread)
 		
 		self.delegate = delegate
-		
-		let savedUseCacheFlag = useCache
 		
 		URLSession.shared.dataTask(with: jsonURL, completionHandler: { [weak self] (jsonData, response, error) in
 			// Callback will be on background thread. Do work here, but only modify self and invoke callbacks on main thread.
@@ -125,7 +113,7 @@ class Model {
 					guard let url = URL(string: urlString) else {
 						throw JSONError.message("In JSON array of dictionaries, in dictionary at index \(i), the string \(urlString) in key/value pair \"url\" is not a valid URL")
 					}
-					let object = ModelObject(name: name, url: url, index: i, useCache: savedUseCacheFlag)
+					let object = ModelObject(name: name, url: url, index: i)
 					
 					i = i+1
 					
